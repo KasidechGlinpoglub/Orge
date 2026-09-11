@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="th" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Money Trad | ML Price Action Trading</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Prompt', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            dark: '#0B0F19',
+                            card: '#151C2C',
+                            primary: '#00E676', // Neon Green for positive/money
+                            secondary: '#2979FF', // Tech Blue
+                            danger: '#FF1744' // Red for negative/sell
+                        }
+                    },
+                    animation: {
+                        'float': 'float 3s ease-in-out infinite',
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom styles for the animated candlestick chart in hero */
+        .candle-container {
+            display: flex;
+            align-items: flex-end;
+            height: 200px;
+            gap: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+        .candle {
+            width: 24px;
+            border-radius: 4px;
+            position: relative;
+            animation: grow 2s ease-in-out infinite alternate;
+        }
+        .candle.bullish { background: linear-gradient(180deg, #00E676 0%, rgba(0,230,118,0.2) 100%); border: 1px solid #00E676; }
+        .candle.bearish { background: linear-gradient(180deg, #FF1744 0%, rgba(255,23,68,0.2) 100%); border: 1px solid #FF1744; }
+        
+        .wick {
+            position: absolute;
+            width: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: -1;
+        }
+        .bullish .wick { background-color: #00E676; }
+        .bearish .wick { background-color: #FF1744; }
+
+        .glass-panel {
+            background: rgba(21, 28, 44, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .glow-text {
+            text-shadow: 0 0 20px rgba(0, 230, 118, 0.5);
+        }
+    </style>
+</head>
+<body class="bg-brand-dark text-white font-sans antialiased overflow-x-hidden">
+
+    <nav id="navbar" class="fixed w-full z-50 transition-all duration-300 py-4 glass-panel border-b-0 border-transparent">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 flex items-center gap-2 cursor-pointer">
+                        <i class="fa-solid fa-chart-line text-brand-primary text-3xl"></i>
+                        <span class="font-bold text-2xl tracking-wider">Money<span class="text-brand-primary">Trad</span></span>
+                    </div>
+                </div>
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="#expertise" class="text-gray-300 hover:text-brand-primary transition-colors">ความเชี่ยวชาญของเรา</a>
+                    <a href="#how-it-works" class="text-gray-300 hover:text-brand-primary transition-colors">เทคโนโลยีหลัก</a>
+                    <a href="#contact" class="bg-brand-primary text-brand-dark px-6 py-2 rounded-full font-semibold hover:bg-green-400 transition-all shadow-[0_0_15px_rgba(0,230,118,0.4)]">ติดต่อองค์กร</a>
+                </div>
+                <!-- Mobile menu button -->
+                <div class="md:hidden flex items-center">
+                    <button id="mobile-menu-btn" class="text-gray-300 hover:text-white focus:outline-none">
+                        <i class="fa-solid fa-bars text-2xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="hidden md:hidden bg-brand-card absolute w-full border-b border-gray-800">
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                <a href="#expertise" class="block px-3 py-2 text-base font-medium text-gray-300 hover:text-brand-primary">ความเชี่ยวชาญของเรา</a>
+                <a href="#how-it-works" class="block px-3 py-2 text-base font-medium text-gray-300 hover:text-brand-primary">เทคโนโลยีหลัก</a>
+                <a href="#contact" class="block px-3 py-2 text-base font-medium text-brand-primary font-bold">ติดต่อองค์กร</a>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <section class="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
+            <!-- Background effects -->
+            <div class="absolute top-0 left-1/4 w-96 h-96 bg-brand-primary rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-pulse-slow"></div>
+            <div class="absolute bottom-0 right-1/4 w-96 h-96 bg-brand-secondary rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-pulse-slow" style="animation-delay: 1.5s"></div>
+
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+                <div class="lg:grid lg:grid-cols-12 lg:gap-16 items-center">
+                    <div class="lg:col-span-6 text-center lg:text-left mb-12 lg:mb-0">
+                        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-panel border-brand-primary/30 text-sm font-medium text-brand-primary mb-6">
+                            <span class="relative flex h-3 w-3">
+                              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-primary opacity-75"></span>
+                              <span class="relative inline-flex rounded-full h-3 w-3 bg-brand-primary"></span>
+                            </span>
+                            สถาบันวิจัยและพัฒนา AI เพื่อการลงทุน
+                        </div>
+                        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
+                            ปฏิวัติการวิเคราะห์ตลาดด้วย <br/>
+                            <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-primary to-brand-secondary">AI & Price Action</span>
+                        </h1>
+                        <p class="text-lg text-gray-400 mb-8 max-w-2xl mx-auto lg:mx-0">
+                            Money Trad คือองค์กรที่มุ่งเน้นการวิจัยและพัฒนาเทคโนโลยี Machine Learning ผสานเข้ากับการวิเคราะห์พฤติกรรมราคา (Price Action) เชิงลึก เพื่อสร้างแบบจำลองความน่าจะเป็นในตลาดการเงิน
+                        </p>
+                        <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                            <a href="#how-it-works" class="bg-brand-primary text-brand-dark px-8 py-4 rounded-full font-bold text-lg hover:bg-green-400 transition-all shadow-[0_0_20px_rgba(0,230,118,0.4)] hover:shadow-[0_0_30px_rgba(0,230,118,0.6)] text-center">
+                                ทำความรู้จักเทคโนโลยีของเรา
+                            </a>
+                            <a href="#contact" class="px-8 py-4 rounded-full font-bold text-lg border border-gray-600 hover:border-gray-400 hover:bg-gray-800 transition-all text-center flex items-center justify-center gap-2">
+                                <i class="fa-regular fa-envelope"></i> ติดต่อองค์กร
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="lg:col-span-6 relative">
+                        <!-- Simulated Trading Dashboard Graphic -->
+                        <div class="glass-panel p-6 rounded-2xl shadow-2xl relative animate-float">
+                            <div class="flex justify-between items-center mb-6 border-b border-gray-700 pb-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center">
+                                        <i class="fa-brands fa-bitcoin text-yellow-500 text-xl"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="font-bold">BTC/USD</h3>
+                                        <p class="text-xs text-brand-primary">AI Signal: STRONG BUY</p>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <h3 class="font-bold text-xl glow-text text-brand-primary">$64,230.50</h3>
+                                    <p class="text-xs text-brand-primary">+2.4% (24h)</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Animated CSS Candles -->
+                            <div class="candle-container border-b border-l border-gray-700 pb-2 pl-2" id="hero-chart">
+                                <!-- Candles will be generated by JS -->
+                            </div>
+                            
+                            <div class="mt-4 flex gap-2">
+                                <div class="flex-1 bg-gray-800/50 p-3 rounded-lg border border-gray-700">
+                                    <p class="text-xs text-gray-400 mb-1">Pattern Detected</p>
+                                    <p class="text-sm font-semibold text-white flex items-center gap-2">
+                                        <i class="fa-solid fa-check-circle text-brand-primary"></i> Bullish Engulfing
+                                    </p>
+                                </div>
+                                <div class="flex-1 bg-gray-800/50 p-3 rounded-lg border border-gray-700">
+                                    <p class="text-xs text-gray-400 mb-1">ML Confidence</p>
+                                    <p class="text-sm font-semibold text-white flex items-center gap-2">
+                                        <i class="fa-solid fa-brain text-brand-secondary"></i> 94.2%
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="expertise" class="py-20 bg-brand-card relative">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center max-w-3xl mx-auto mb-16">
+                    <h2 class="text-brand-primary font-semibold tracking-wide uppercase mb-2">องค์ความรู้และเทคโนโลยี</h2>
+                    <h3 class="text-3xl md:text-4xl font-bold mb-4">ความเชี่ยวชาญหลักของ Money Trad</h3>
+                    <p class="text-gray-400">โมเดล AI ของเราถูกฝึกสอนด้วยข้อมูล Price Action ย้อนหลังหลายสิบปี เพื่อให้เข้าใจพฤติกรรมของรายใหญ่และจิตวิทยาตลาดอย่างแท้จริง นำไปสู่การพัฒนาเครื่องมือที่ทรงประสิทธิภาพ</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <!-- Feature 1 -->
+                    <div class="bg-brand-dark p-8 rounded-2xl border border-gray-800 hover:border-brand-primary/50 transition-all group">
+                        <div class="w-14 h-14 bg-gray-800 rounded-xl flex items-center justify-center mb-6 group-hover:bg-brand-primary/20 transition-all">
+                            <i class="fa-solid fa-microchip text-2xl text-brand-primary"></i>
+                        </div>
+                        <h4 class="text-xl font-bold mb-3">ML Pattern Recognition</h4>
+                        <p class="text-gray-400 text-sm leading-relaxed">โมเดลอ่านแท่งเทียน (Candlestick) และโครงสร้างราคา (Market Structure) อัตโนมัติ ค้นหาแนวรับ-แนวต้านที่ซ่อนอยู่ซึ่งตาเปล่ามองไม่เห็น</p>
+                    </div>
+
+                    <!-- Feature 2 -->
+                    <div class="bg-brand-dark p-8 rounded-2xl border border-gray-800 hover:border-brand-secondary/50 transition-all group">
+                        <div class="w-14 h-14 bg-gray-800 rounded-xl flex items-center justify-center mb-6 group-hover:bg-brand-secondary/20 transition-all">
+                            <i class="fa-solid fa-bolt text-2xl text-brand-secondary"></i>
+                        </div>
+                        <h4 class="text-xl font-bold mb-3">Real-time Trading Signals</h4>
+                        <p class="text-gray-400 text-sm leading-relaxed">รับการแจ้งเตือนทันทีเมื่อระบบตรวจพบ Setup ที่มีความน่าจะเป็นสูง (High Probability) ผ่าน Line, Telegram หรือ Webhook</p>
+                    </div>
+
+                    <!-- Feature 3 -->
+                    <div class="bg-brand-dark p-8 rounded-2xl border border-gray-800 hover:border-yellow-500/50 transition-all group">
+                        <div class="w-14 h-14 bg-gray-800 rounded-xl flex items-center justify-center mb-6 group-hover:bg-yellow-500/20 transition-all">
+                            <i class="fa-solid fa-shield-halved text-2xl text-yellow-500"></i>
+                        </div>
+                        <h4 class="text-xl font-bold mb-3">Dynamic Risk Management</h4>
+                        <p class="text-gray-400 text-sm leading-relaxed">AI คำนวณจุด Stop Loss และ Take Profit ให้เหมาะสมกับความผันผวนของตลาด (Volatility) ในขณะนั้นโดยอิงจากโครงสร้างราคา</p>
+                    </div>
+                    
+                    <!-- Feature 4 -->
+                    <div class="bg-brand-dark p-8 rounded-2xl border border-gray-800 hover:border-purple-500/50 transition-all group">
+                        <div class="w-14 h-14 bg-gray-800 rounded-xl flex items-center justify-center mb-6 group-hover:bg-purple-500/20 transition-all">
+                            <i class="fa-solid fa-chart-pie text-2xl text-purple-500"></i>
+                        </div>
+                        <h4 class="text-xl font-bold mb-3">Multi-Asset Analysis</h4>
+                        <p class="text-gray-400 text-sm leading-relaxed">ใช้ได้กับทุกสินทรัพย์ที่มีสภาพคล่อง ไม่ว่าจะเป็น Crypto, Forex, หุ้น หรือ ทองคำ โมเดลปรับตัวเข้ากับพฤติกรรมแต่ละสินทรัพย์ได้</p>
+                    </div>
+
+                    <!-- Feature 5 -->
+                    <div class="bg-brand-dark p-8 rounded-2xl border border-gray-800 hover:border-pink-500/50 transition-all group">
+                        <div class="w-14 h-14 bg-gray-800 rounded-xl flex items-center justify-center mb-6 group-hover:bg-pink-500/20 transition-all">
+                            <i class="fa-solid fa-clock-rotate-left text-2xl text-pink-500"></i>
+                        </div>
+                        <h4 class="text-xl font-bold mb-3">Advanced Backtesting</h4>
+                        <p class="text-gray-400 text-sm leading-relaxed">ทดสอบกลยุทธ์ของคุณร่วมกับสัญญาณจาก AI ย้อนหลังได้อย่างแม่นยำ พร้อมรายงานผลการทำกำไร (Drawdown, Win Rate, ROI)</p>
+                    </div>
+
+                    <!-- Feature 6 -->
+                    <div class="bg-brand-dark p-8 rounded-2xl border border-gray-800 hover:border-orange-500/50 transition-all group">
+                        <div class="w-14 h-14 bg-gray-800 rounded-xl flex items-center justify-center mb-6 group-hover:bg-orange-500/20 transition-all">
+                            <i class="fa-solid fa-robot text-2xl text-orange-500"></i>
+                        </div>
+                        <h4 class="text-xl font-bold mb-3">Auto-Execution API</h4>
+                        <p class="text-gray-400 text-sm leading-relaxed">เชื่อมต่อ API กับกระดานเทรดชั้นนำ (Binance, Bybit, Exness) เพื่อให้ระบบทำการเปิด-ปิดออเดอร์อัตโนมัติตามสัญญาณ</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="how-it-works" class="py-20 relative">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="lg:grid lg:grid-cols-2 gap-16 items-center">
+                    <div class="mb-12 lg:mb-0">
+                        <h2 class="text-3xl md:text-4xl font-bold mb-6">ให้ AI ทำงานหนักแทนคุณ <br><span class="text-brand-secondary">วิเคราะห์กราฟแบบมือโปร</span></h2>
+                        <p class="text-gray-400 mb-8">คุณไม่จำเป็นต้องมีความรู้เรื่องโค้ดดิ้ง หรือนั่งเฝ้าจอทั้งวัน เราออกแบบระบบ AI ให้คิดและทำหน้าที่เสมือนผู้ช่วยเทรดส่วนตัวของคุณ</p>
+                        
+                        <div class="space-y-8">
+                            <div class="flex gap-4">
+                                <div class="flex-shrink-0 w-12 h-12 rounded-full bg-brand-secondary/20 border border-brand-secondary flex items-center justify-center text-brand-secondary font-bold text-xl">1</div>
+                                <div>
+                                    <h4 class="text-xl font-bold mb-2">เรียนรู้จากอดีต (Learning)</h4>
+                                    <p class="text-gray-400 text-sm">AI ของเรากวาดสายตาอ่านกราฟราคาย้อนหลังไปหลายสิบปี เหมือนเทรดเดอร์ที่ดูหน้าจอมาทั้งชีวิต แต่ระบบเราใช้เวลาเพียงเสี้ยววินาทีในการจดจำว่ารูปแบบไหนทำเงินได้</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-4">
+                                <div class="flex-shrink-0 w-12 h-12 rounded-full bg-brand-secondary/20 border border-brand-secondary flex items-center justify-center text-brand-secondary font-bold text-xl">2</div>
+                                <div>
+                                    <h4 class="text-xl font-bold mb-2">จับตาดูปัจจุบัน (Monitoring)</h4>
+                                    <p class="text-gray-400 text-sm">ระบบจะเฝ้าดูตลาดตลอด 24 ชั่วโมง โดยปราศจากความเหนื่อยล้าหรืออารมณ์โลภ เพื่อค้นหาจังหวะที่กราฟวิ่งตรงกับ "แพทเทิร์นทำกำไร" ที่มันเคยเรียนรู้มา</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-4">
+                                <div class="flex-shrink-0 w-12 h-12 rounded-full bg-brand-primary/20 border border-brand-primary flex items-center justify-center text-brand-primary font-bold text-xl">3</div>
+                                <div>
+                                    <h4 class="text-xl font-bold mb-2">ชี้เป้าทำกำไร (Actionable Alerts)</h4>
+                                    <p class="text-gray-400 text-sm">ทันทีที่พบโอกาสทอง ระบบจะส่งข้อความแจ้งเตือนคุณผ่านมือถือทันที พร้อมบอกจุดเข้าซื้อ และจุดป้องกันความเสี่ยงอย่างชัดเจน ให้คุณตัดสินใจได้ง่ายขึ้น</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="relative">
+                        <!-- AI Process UI graphic (Replaced Code Block) -->
+                        <div class="glass-panel rounded-xl overflow-hidden shadow-2xl border border-gray-700">
+                            <!-- Header -->
+                            <div class="bg-gray-900 px-4 py-3 border-b border-gray-800 flex justify-between items-center">
+                                <div class="flex items-center gap-3">
+                                    <div class="relative">
+                                        <i class="fa-solid fa-robot text-brand-secondary text-lg"></i>
+                                        <span class="absolute -top-1 -right-1 flex h-2 w-2">
+                                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-primary opacity-75"></span>
+                                            <span class="relative inline-flex rounded-full h-2 w-2 bg-brand-primary"></span>
+                                        </span>
+                                    </div>
+                                    <span class="text-sm font-semibold text-gray-300">หน้าต่างการทำงานของ AI</span>
+                                </div>
+                                <span class="text-xs text-brand-primary px-2 py-1 bg-brand-primary/10 rounded-md border border-brand-primary/20">ระบบวิเคราะห์ทำงานปกติ</span>
+                            </div>
+                            
+                            <!-- Body -->
+                            <div class="p-6 space-y-5">
+                                <!-- Step 1 UI -->
+                                <div class="flex items-start gap-4 p-4 bg-gray-800/40 rounded-xl border border-gray-700/50">
+                                     <div class="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0">
+                                        <i class="fa-solid fa-magnifying-glass-chart text-gray-400"></i>
+                                     </div>
+                                     <div class="w-full">
+                                         <p class="text-xs text-gray-400 mb-1">กำลังสแกนข้อมูลเชิงลึก...</p>
+                                         <p class="text-sm text-white font-medium">วิเคราะห์รูปแบบกราฟและ Market Structure</p>
+                                     </div>
+                                </div>
+                                
+                                <!-- Step 2 UI -->
+                                <div class="flex items-start gap-4 p-4 bg-brand-secondary/10 rounded-xl border border-brand-secondary/30 relative overflow-hidden">
+                                    <!-- Progress bar background effect -->
+                                    <div class="absolute bottom-0 left-0 h-1 bg-brand-secondary" style="width: 92%;"></div>
+                                     
+                                     <div class="w-10 h-10 rounded-full bg-brand-secondary/20 flex items-center justify-center flex-shrink-0">
+                                        <i class="fa-solid fa-brain text-brand-secondary"></i>
+                                     </div>
+                                     <div class="w-full">
+                                         <div class="flex justify-between items-center mb-1">
+                                             <p class="text-xs text-brand-secondary">พบรูปแบบที่ตรงกับสมมติฐาน</p>
+                                             <span class="text-xs font-bold text-brand-secondary">ระดับความมั่นใจ 92%</span>
+                                         </div>
+                                         <p class="text-sm text-white font-medium">ตรวจพบพฤติกรรมกราฟที่มีนัยสำคัญทางสถิติ</p>
+                                     </div>
+                                </div>
+
+                                <!-- Step 3 UI -->
+                                <div class="flex items-start gap-4 p-4 bg-brand-primary/10 rounded-xl border border-brand-primary/40 shadow-[0_0_15px_rgba(0,230,118,0.1)]">
+                                     <div class="w-10 h-10 rounded-full bg-brand-primary flex items-center justify-center flex-shrink-0 shadow-[0_0_10px_rgba(0,230,118,0.5)]">
+                                        <i class="fa-solid fa-microchip text-brand-dark"></i>
+                                     </div>
+                                     <div class="w-full">
+                                         <p class="text-xs text-brand-primary mb-1">ประมวลผลข้อมูลสำเร็จ</p>
+                                         <p class="text-base text-white font-bold mb-2">ผลการประเมิน: <span class="text-brand-primary">แนวโน้มเชิงบวก (Positive Expected Value)</span></p>
+                                         <div class="flex gap-3 text-xs">
+                                            <span class="text-gray-400">โครงสร้างราคา: <span class="text-green-400">แข็งแกร่ง</span></span>
+                                            <span class="text-gray-400">ระดับความเสี่ยง: <span class="text-yellow-400">ปานกลาง</span></span>
+                                         </div>
+                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA Section (Organization focus) -->
+        <section class="py-20 relative overflow-hidden bg-brand-card border-t border-gray-800">
+            <div class="absolute inset-0 bg-gradient-to-r from-brand-primary/5 to-brand-secondary/5"></div>
+            <div class="max-w-4xl mx-auto px-4 text-center relative z-10">
+                <h2 class="text-3xl md:text-4xl font-bold mb-6">สนใจนำเทคโนโลยีของเราไปใช้งาน หรือร่วมงานกับเรา?</h2>
+                <p class="text-lg text-gray-300 mb-8">เราเปิดรับพันธมิตรทางธุรกิจ สถาบันการเงิน และผู้ที่สนใจต่อยอดงานวิจัยด้าน Machine Learning ในตลาดการเงิน</p>
+                <a href="#contact" class="inline-block bg-brand-primary text-brand-dark px-10 py-4 rounded-full font-bold text-xl hover:bg-green-400 transition-all shadow-[0_0_20px_rgba(0,230,118,0.4)]">
+                    ติดต่อพูดคุยกับทีมงาน
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <footer id="contact" class="bg-[#070A10] border-t border-gray-800 pt-16 pb-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+                <div class="md:col-span-1">
+                    <div class="flex items-center gap-2 mb-4">
+                        <i class="fa-solid fa-chart-line text-brand-primary text-2xl"></i>
+                        <span class="font-bold text-xl">Money<span class="text-brand-primary">Trad</span></span>
+                    </div>
+                    <p class="text-gray-500 text-sm mb-6">
+                        องค์กรวิจัยและพัฒนาแบบจำลอง AI ด้วยเทคโนโลยี Machine Learning และการวิเคราะห์ Price Action เชิงลึก
+                    </p>
+                    <div class="flex gap-4">
+                        <a href="#" class="text-gray-400 hover:text-white"><i class="fa-brands fa-linkedin text-xl"></i></a>
+                        <a href="#" class="text-gray-400 hover:text-white"><i class="fa-brands fa-twitter text-xl"></i></a>
+                        <a href="#" class="text-gray-400 hover:text-white"><i class="fa-solid fa-envelope text-xl"></i></a>
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 class="font-bold mb-4">โครงสร้างองค์กร</h4>
+                    <ul class="space-y-2 text-sm text-gray-500">
+                        <li><a href="#" class="hover:text-brand-primary">ทีมวิจัยและพัฒนา (R&D)</a></li>
+                        <li><a href="#" class="hover:text-brand-primary">เทคโนโลยีและนวัตกรรม</a></li>
+                        <li><a href="#" class="hover:text-brand-primary">โอกาสร่วมงานกับเรา</a></li>
+                        <li><a href="#" class="hover:text-brand-primary">พันธมิตรทางธุรกิจ</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="font-bold mb-4">ผลงานและบทความ</h4>
+                    <ul class="space-y-2 text-sm text-gray-500">
+                        <li><a href="#" class="hover:text-brand-primary">Whitepapers</a></li>
+                        <li><a href="#" class="hover:text-brand-primary">กรณีศึกษา (Case Studies)</a></li>
+                        <li><a href="#" class="hover:text-brand-primary">งานวิจัย ML for Finance</a></li>
+                        <li><a href="#" class="hover:text-brand-primary">ข่าวสารองค์กร</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="font-bold mb-4">สำนักงาน</h4>
+                    <ul class="space-y-2 text-sm text-gray-500">
+                        <li><i class="fa-solid fa-envelope mr-2"></i> contact@moneytrad.org</li>
+                        <li><i class="fa-solid fa-phone mr-2"></i> +66 2 XXX XXXX</li>
+                        <li><i class="fa-solid fa-location-dot mr-2"></i> อาคารอินโนเวชั่นเซ็นเตอร์, กรุงเทพมหานคร</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center">
+                <p class="text-gray-600 text-sm">© 2026 Money Trad Organization. All rights reserved.</p>
+                <div class="flex gap-4 mt-4 md:mt-0 text-sm text-gray-600">
+                    <a href="#" class="hover:text-white">นโยบายความเป็นส่วนตัว</a>
+                    <a href="#" class="hover:text-white">ข้อกำหนดและเงื่อนไข</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Mobile Menu Toggle
+            const btn = document.getElementById('mobile-menu-btn');
+            const menu = document.getElementById('mobile-menu');
+
+            btn.addEventListener('click', () => {
+                menu.classList.toggle('hidden');
+            });
+
+            // Navbar Scroll Effect
+            const navbar = document.getElementById('navbar');
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 20) {
+                    navbar.classList.add('shadow-lg', 'bg-brand-card/90');
+                    navbar.classList.remove('py-4', 'border-transparent');
+                    navbar.classList.add('py-2', 'border-gray-800');
+                } else {
+                    navbar.classList.remove('shadow-lg', 'bg-brand-card/90', 'py-2', 'border-gray-800');
+                    navbar.classList.add('py-4', 'border-transparent');
+                }
+            });
+
+            // Hero Chart Animation Setup (Simulating Candlesticks)
+            const chartContainer = document.getElementById('hero-chart');
+            const numCandles = Math.floor(chartContainer.clientWidth / 36); // Roughly calc how many fit
+            
+            // Generate mock candlestick data
+            let currentPrice = 50;
+            
+            for(let i=0; i<15; i++) {
+                const isBullish = Math.random() > 0.4; // 60% chance bullish for uptrend effect
+                const bodyHeight = Math.random() * 40 + 10;
+                const wickHeight = bodyHeight + Math.random() * 30 + 10;
+                const yOffset = currentPrice;
+                
+                const candleEl = document.createElement('div');
+                candleEl.className = `candle ${isBullish ? 'bullish' : 'bearish'}`;
+                candleEl.style.height = `${bodyHeight}px`;
+                candleEl.style.marginBottom = `${yOffset}px`;
+                
+                // Add slight animation delay for wave effect
+                candleEl.style.animationDelay = `${i * 0.1}s`;
+                
+                const wickEl = document.createElement('div');
+                wickEl.className = 'wick';
+                wickEl.style.height = `${wickHeight}px`;
+                wickEl.style.bottom = `-${(wickHeight - bodyHeight) / 2}px`;
+                
+                candleEl.appendChild(wickEl);
+                chartContainer.appendChild(candleEl);
+                
+                // update price trend
+                if(isBullish) {
+                    currentPrice += (Math.random() * 20);
+                } else {
+                    currentPrice -= (Math.random() * 15);
+                }
+                
+                // keep in bounds
+                if (currentPrice < 10) currentPrice = 10;
+                if (currentPrice > 120) currentPrice = 120;
+            }
+
+            // Smooth scrolling for anchor links
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    menu.classList.add('hidden'); // Close mobile menu if open
+                    document.querySelector(this.getAttribute('href')).scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                });
+            });
+        });
+    </script>
+</body>
+</html>
